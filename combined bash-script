@@ -1,0 +1,44 @@
+#!/bin/bash
+#########################################
+# Deployment on 2 separate paths        #
+# on same server by selecting file name.#
+#########################################
+
+set -e
+read -p "Enter the zip file name (admin-build.zip or client-build.zip): " ZIP
+
+if [[ "$ZIP" == "admin-build.zip" ]]; then
+  HOME_TEMP="/home/user/legacy-admin-temp"
+  BASE_DIR="/var/http/unaadmin"
+  ROLLBACK1="/var/http/unaadmin-rollback"
+  ROLLBACK2="/var/http/unaadmin-rollback2"
+  BUILD_PATH="$HOME_TEMP/build/*"
+elif [[ "$ZIP" == "client-build.zip" ]]; then
+  HOME_TEMP="/home/user/legacy-client-temp"
+  BASE_DIR="/var/http/unaclient"
+  ROLLBACK1="/var/http/unaclient-rollback"
+  ROLLBACK2="/var/http/unaclient-rollback2"
+  BUILD_PATH="$HOME_TEMP/build/*"
+else
+  echo "Invalid zip file name."
+  exit 1
+fi
+
+# Step 1: Unzip to home temp after cleaning
+rm -rf "$HOME_TEMP"/*
+unzip -o "$ZIP" -d "$HOME_TEMP"
+
+# Step 2: Rotate rollback directories
+rm -rf "$ROLLBACK2"/*
+cp -a "$ROLLBACK1"/. "$ROLLBACK2"/
+
+rm -rf "$ROLLBACK1"/*
+cp -a "$BASE_DIR"/. "$ROLLBACK1"/
+
+rm -rf "$BASE_DIR"/*
+cp -a $BUILD_PATH "$BASE_DIR"/
+
+# Step 3: Set ownership (adjust as needed)
+sudo chown -R ubuntu:ubuntu "$BASE_DIR"
+
+echo "Deployment completed."
